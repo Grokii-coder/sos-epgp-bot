@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS ep_log (
     class         VARCHAR(64),
     level         VARCHAR(64),    -- VARCHAR because some entries are 'ANONYMOUS'
     point_type    VARCHAR(64),
+    pp_value      VARCHAR(64),    -- Hidden value, stored but purpose unknown
     ep_points     INT,
     cycle_sum     INT,
     points_earned INT,

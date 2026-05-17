@@ -126,7 +126,7 @@ Every loot event. Clean and straightforward.
 | Column | Description |
 |--------|-------------|
 | Date | Date of loot |
-| Character | Who received the item |
+| toon_name | Who received the item |
 | Loot | Item name |
 | Gear Level | Bid type (High Bid, Medium Bid, Low Bid, Epic Drop, Alt Loot, Rot, etc.) |
 | Notes | GP value |
