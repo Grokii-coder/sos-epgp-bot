@@ -21,4 +21,4 @@ COPY . .
 
 # Default command - runs the sync script
 # We'll change this to main.py in Phase 2
-CMD ["python", "sync.py"]
+CMD ["python", "main.py"]

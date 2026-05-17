@@ -63,3 +63,17 @@ CREATE TABLE IF NOT EXISTS attendance_responses (
     -- Prevent duplicate responses for the same player/event
     UNIQUE KEY unique_response (player_name, event_date)
 );
+
+-- Sync state
+-- Tracks the last time a successful sync was run
+-- Used to avoid unnecessary Google Sheets requests
+CREATE TABLE IF NOT EXISTS sync_state (
+    id            INT PRIMARY KEY DEFAULT 1,  -- single row table
+    last_sync     DATETIME,
+    ep_sheet_row  INT DEFAULT 0,
+    gp_sheet_row  INT DEFAULT 0
+);
+
+-- Initialize with a single row
+INSERT IGNORE INTO sync_state (id, last_sync, ep_sheet_row, gp_sheet_row)
+VALUES (1, NULL, 0, 0);
