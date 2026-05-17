@@ -34,10 +34,9 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
     volumes:
-      # Bind mount - your local code folder maps directly into
-      # the container. Edit a file in VS Code, the container
-      # sees it immediately. No rebuild needed.
       - .:/app
     depends_on:
       db:
