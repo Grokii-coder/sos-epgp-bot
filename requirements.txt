@@ -1,0 +1,5 @@
+py-cord==2.6.1
+sqlalchemy==2.0.40
+pymysql==1.1.1
+requests==2.32.3
+python-dotenv==1.1.0

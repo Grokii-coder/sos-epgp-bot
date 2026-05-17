@@ -1,0 +1,13 @@
+# Environment variables - never commit this
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Docker
+*.log
+
+# VS Code
+.vscode/

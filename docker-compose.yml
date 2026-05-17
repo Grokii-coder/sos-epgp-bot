@@ -1,0 +1,48 @@
+services:
+
+  # MySQL database container
+  db:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      # Named volume - your data persists here across container restarts
+      - mysql_data:/var/lib/mysql
+      # Init script - creates tables on first boot only
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      # Exposes MySQL on your local machine at port 3306
+      # Lets you connect with a DB tool like DBeaver if you want
+      # to inspect the data directly
+      - "3306:3306"
+    healthcheck:
+      # Docker waits for MySQL to be truly ready before
+      # starting the Python container - not just running,
+      # but actually accepting connections
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Python application container
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      # Bind mount - your local code folder maps directly into
+      # the container. Edit a file in VS Code, the container
+      # sees it immediately. No rebuild needed.
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+# Named volumes are declared here at the bottom
+# Docker manages the actual storage location on your machine
+volumes:
+  mysql_data:
