@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS ep_log (
 CREATE TABLE IF NOT EXISTS gp_log (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     date        DATE,
-    character   VARCHAR(64),
+    toon_name   VARCHAR(64),
     loot        VARCHAR(256),
     gear_level  VARCHAR(64),
     gp_value    INT,
