@@ -61,8 +61,39 @@ CREATE TABLE IF NOT EXISTS attendance_responses (
     resolved        BOOLEAN DEFAULT FALSE,
 
     -- Prevent duplicate responses for the same player/event
-    UNIQUE KEY unique_response (player_name, event_date)
+    UNIQUE KEY unique_response (player_name, event_date, event_type)
 );
+
+-- Scheduled Events
+-- Stores current state of Discord scheduled events
+-- Updated in real time via gateway event listeners
+CREATE TABLE IF NOT EXISTS scheduled_events (
+    event_id        BIGINT PRIMARY KEY,
+    guild_id        BIGINT,
+    name            VARCHAR(256),
+    location        VARCHAR(256),
+    start_time      DATETIME,
+    end_time        DATETIME,
+    creator_id      BIGINT,
+    creator_name    VARCHAR(64),
+    status          VARCHAR(32),
+    description     TEXT,
+    created_at      DATETIME,
+    updated_at      DATETIME
+);
+
+-- Event History
+-- Tracks name changes to Discord events for pivot detection
+CREATE TABLE IF NOT EXISTS event_history (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    event_id        BIGINT,
+    field_changed   VARCHAR(64),    -- 'name', 'location', 'start_time', 'status'
+    previous_value  VARCHAR(512),
+    new_value       VARCHAR(512),
+    changed_at      DATETIME,
+    INDEX idx_event_id (event_id)
+);
+
 
 -- Sync state
 -- Tracks the last time a successful sync was run
