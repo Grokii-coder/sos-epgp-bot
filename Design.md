@@ -126,7 +126,7 @@ Every loot event. Clean and straightforward.
 | Column | Description |
 |--------|-------------|
 | Date | Date of loot |
-| toon_name | Who received the item |
+| Character | Who received the item |
 | Loot | Item name |
 | Gear Level | Bid type (High Bid, Medium Bid, Low Bid, Epic Drop, Alt Loot, Rot, etc.) |
 | Notes | GP value |
@@ -576,13 +576,83 @@ Python source files (`classes/`, `cogs/`, any new dependencies in their
 
 ---
 
+## Scope Creep — Implemented
+
+These items were added during development beyond the original design.
+
+### SC-1: 12-Player Minimum Threshold for Events ✅
+Single-player EP Log entries (data errors, test entries) were appearing as guild
+events. Added a minimum of 12 players per check-in to qualify as a real event,
+matching the guild's PQ eligibility requirement.
+
+### SC-2: Same-Day PQ + Raid Split ✅
+When a PQ event and EPGP raid occur on the same date, they are now shown as two
+separate events rather than one combined event. The event type is determined by
+the check-in type (Event Attend = PQ, Raid - Start/Mid/End = EPGP Raid).
+
+### SC-3: TTL Cache for Google Sheets Sync ✅
+Rather than syncing on every command, a 5-minute TTL cache was implemented.
+The sync only runs if more than 5 minutes have passed since the last sync.
+Cache state is stored in the `sync_state` MySQL table.
+Startup sync runs automatically when the bot connects.
+
+### SC-4: Yes/No Button Flow in /review ✅
+Instead of a static list, `/review` walks through discrepancies one at a time
+using Discord UI buttons. Player responses (yes/no) are persisted in the
+`attendance_responses` table. "No" responses are marked resolved and never
+shown again. "Yes" responses are flagged for officer follow-up.
+
+### SC-5: Discord Scheduled Events Integration 🔜
+Pull upcoming guild events from Discord's scheduled events API to use as the
+primary source for event names and raid leaders. Replaces reliance on the EP
+Log note field for event identification.
+
+**Event location display format:**
+```
+📍 DISCORD_EVENT_NAME (was: PREVIOUS_NAME) [sheet: EPGP_NOTE] 👤 LEADER
+```
+
+- **DISCORD_EVENT_NAME** — current Discord event name (authoritative)
+- **(was: PREVIOUS_NAME)** — previous Discord event name if changed (pivot detection)
+- **[sheet: EPGP_NOTE]** — EP Log note field value
+- **👤 LEADER** — Discord event creator (planned lead). If someone else received
+  Event Lead EP, shown as `Creator → Actual Lead`
+
+**Examples:**
+```
+# Normal - leader as planned
+📍 VT - Aten One Night Test [sheet: VT - Day 2] 👤 Sandrian
+
+# Normal - different leader ran it
+📍 VT - Aten One Night Test [sheet: VT - Day 2] 👤 Sandrian → Avenn
+
+# Pivot - Discord event was changed before raid
+📍 VT - Day 2 (was: Kael - Dragons) [sheet: VT - Day 2] 👤 Sandrian
+
+# Combined - changed, pivoted, different leader
+📍 VT - Day 2 (was: Kael - Dragons) [sheet: Ssra - Rhag] 👤 Sandrian → Avenn
+```
+
+**Database additions required:**
+- `scheduled_events` table — stores current Discord event data
+- `event_history` table — tracks name changes for pivot detection
+
+**Data sources:**
+- Discord event creator → planned raid leader
+- EP Log `point_type = 'Event Lead'` → actual raid leader
+- If no Event Lead EP exists → show only Discord creator, no arrow
+
+**Shown in:** `/review` event lines (past events only, not upcoming)
+
+---
+
 ## Open Items & Deferred Decisions
 
 | Item | Status | Notes |
 |------|--------|-------|
 | Alt attendance in EP Log | Deferred | Need to confirm whether alt credit is logged under alt name or main name. Do not design around this until confirmed with real data. |
-| Cycles tab column layout | Not yet fetched | Confirm exact structure before syncing |
-| Sync schedule interval | TBD | Determine appropriate polling frequency |
+| Sync schedule interval | TBD | Currently triggered by commands via 5-min TTL cache |
 | Additional commands | Pending | `/pr`, `/standings`, `/loot`, `/decay`, `/whowas`, `/keys`, `/unresolved` — not committed to, evaluate after core features are working |
 | Voice channel priority | Phase 3+ | Requires existing bot integration for Discord voice membership |
 | Webhook-triggered sync | Phase 3+ | Requires coordination with the bot that writes to Google Sheets |
+| SC-5 implementation | Next | Discord scheduled events integration — see Scope Creep section |

@@ -23,7 +23,7 @@ bot.load_extension("cogs.events")
 
 @bot.event
 async def on_ready():
-    await bot.sync_commands()
+    await bot.sync_commands(force=True)
     print(f"Bot connected as {bot.user}")
     print(f"Serving {len(bot.guilds)} guild(s)")
     print("All cogs loaded")
