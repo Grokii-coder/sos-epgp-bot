@@ -151,6 +151,36 @@ docker logs sos-epgp-bot-bot-1 --follow
 
 ---
 
+## Database Queries
+
+Run a one-off MySQL query without opening an interactive session.
+
+**Bash (Linux/Mac/Git Bash):**
+```bash
+docker compose exec db mysql -u botuser -p"${DB_PASSWORD}" sosbot -e "YOUR QUERY HERE;"
+```
+
+**PowerShell (Windows):**
+```powershell
+$pw = (Get-Content .env | Select-String 'DB_PASSWORD' | ForEach-Object { $_.ToString().Split('=')[1] })
+docker compose exec db mysql -u botuser -p"$pw" sosbot -e "YOUR QUERY HERE;"
+```
+
+> **Why not `$env:DB_PASSWORD`?** Docker Compose loads `.env` into the
+> container but does not export those values into your host PowerShell session.
+> Reading directly from the `.env` file is the reliable cross-platform approach.
+
+### Useful one-liners
+
+```powershell
+# See every distinct class name that has ever appeared in the EP log
+# (use this to verify class alias mappings and catch unexpected title strings)
+$pw = (Get-Content .env | Select-String 'DB_PASSWORD' | ForEach-Object { $_.ToString().Split('=')[1] })
+docker compose exec db mysql -u botuser -p"$pw" sosbot -e "SELECT DISTINCT class FROM ep_log ORDER BY class;"
+```
+
+---
+
 ## Project Structure
 
 ```

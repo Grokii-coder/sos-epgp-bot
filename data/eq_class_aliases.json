@@ -1,0 +1,1207 @@
+{
+  "_meta": {
+    "description": "EverQuest class alias map for sos-epgp-bot /priority command. Maps every known title/alias a player might show as in the Overview tab (Class column) back to their canonical base class name and armor type.",
+    "purpose": "Lookup dict loaded once at startup. Key = any title string that could appear in the sheet. Value = { base_class, armor_type }. Built to handle players whose level, epic, or AA title appears instead of the raw class name.",
+    "project_quarm_note": "Project Quarm goes through Planes of Power. Berserker (added in Gates of Discord) does NOT exist on Quarm. Beastlord IS available (added in Luclin). 14 total classes.",
+    "title_categories": {
+      "level_title": "Earned by reaching specific character levels. Appear in /who automatically once the threshold is met. Relevant thresholds for Quarm (cap 60): lvl 51, 55, 60. Levels 65/70/75 included for completeness but will not appear on Quarm.",
+      "epic_title": "Earned by completing the class epic weapon quest (1.0, 1.5, 2.0). Player must actively choose to display this title via Shift+T. Epic 1.5 and 2.0 are post-PoP and will not appear on Quarm.",
+      "aa_title": "Earned by spending AA (Alternate Advancement) points. Unlocked in tiers by spending points across General, Archetype, and Class AA trees.",
+      "tradeskill_title": "Earned by reaching skill thresholds in tradeskills (e.g. Master Chef, Grandmaster Smith). These are NOT class-specific \u2014 any class can earn them \u2014 so they are EXCLUDED from this alias map since they cannot be used to identify a player's class."
+    },
+    "sources": {
+      "level_titles_primary": "https://everquest.allakhazam.com/wiki/eq:special_titles (ZAM/Allakhazam wiki, last modified 2022-02-08)",
+      "level_titles_secondary": "https://onlinegamecommands.com/everquest-class-titles/ (OnlineGameCommands, originally 2016, updated 2025-01-07)",
+      "level_titles_tertiary": "https://alt.games.everquest.narkive.com/K9sfswmK/different-titles-at-certain-levels (community post, original source cited as geocities/skatoolaki)",
+      "epic_titles": "https://onlinegamecommands.com/everquest-class-titles/ and https://everquest.allakhazam.com/wiki/eq:special_titles",
+      "aa_titles": "https://onlinegamecommands.com/everquest-class-titles/ and https://everquest.allakhazam.com/wiki/eq:special_titles",
+      "armor_types": "https://everquest.fandom.com/wiki/Archetype ('Plate wearers: bards, clerics, paladins, shadow knights, and warriors. Chain wearers: berserkers, rangers, rogues, and shamans. Leather wearers: beastlords, druids, and monks. Cloth wearers: enchanters, magicians, necromancers and wizards.')",
+      "project_quarm_classes": "https://github.com/LordDemonos/Quarm.Guide/blob/master//wiki/about-project-quarm.md"
+    },
+    "discrepancies_and_uncertainties": {
+      "aa_point_thresholds": "ZAM wiki states AA titles unlock at 6/12/24 points (measuring 'points in General', 'points in Archtype', 'points in Class' separately). OnlineGameCommands states 6/18/42 total points. These are likely measuring different things (per-tree vs total). Recorded both; the exact unlock is not critical for the alias lookup, only the title strings matter.",
+      "wizard_level65_title": "ZAM wiki and OnlineGameCommands both spell this 'Archanist'. No level-65 Wizard has appeared in the actual EPGP sheet (Quarm is capped at 60), so the in-game string is unconfirmed. BOTH 'Archanist' and 'Arcanist' are included as defensive aliases.",
+      "shadow_knight_spacing": "CONFIRMED via SELECT DISTINCT class FROM ep_log: the sheet uses 'Shadow Knight' (two words). 'ShadowKnight' retained as defensive alias.",
+      "warrior_epic_collision": "Warrior's Epic 1.0 title is 'Champion', which is the same as their level-51 title. This is a known EQ quirk \u2014 both are mapped identically here, which is correct behavior.",
+      "cleric_epic_collision": "Cleric's Epic 2.0 title 'High Priest / Priestess' overlaps with their level-60 title 'High Priest'. Both map to Cleric, so no functional issue.",
+      "gm_event_titles": "One-off GM event titles (e.g. 'Chosen Guardian' from Tower of Frozen Shadow) are not documented and not included. If one appears in the sheet it will produce a lookup miss.",
+      "base_class_names": "Levels 1-50 characters show their base class name in /who (e.g. 'Bard', 'Wizard'). These are also included as aliases mapping to themselves.",
+      "mage_alias": "CONFIRMED via SQL: 'Mage' appears exactly once in the EP log (Galeida, 2024-10-26) \u2014 a single data entry error. Galeida's current class is Magician. 'Mage' is mapped to Magician as a defensive catch.",
+      "sorceror_typo": "CONFIRMED via SQL: 'Sorceror' (extra 'o') appears in the EP log alongside the correct 'Sorcerer'. Both are mapped to Wizard."
+    }
+  },
+  "aliases": {
+    "Bard": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Minstrel": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Bard level 51"
+    },
+    "Troubadour": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Bard level 55"
+    },
+    "Virtuoso": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Bard level 60 \u2014 most common Quarm end-game title"
+    },
+    "Maestro": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Bard level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Herald": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Bard level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Lyricist": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Bard level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Composer": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Bard Epic 1.0 (Singing Short Sword)"
+    },
+    "Wyrmkin": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Bard Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Blade Dancer": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Bard Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Impresario": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "aa_title",
+      "notes": "Bard AA title (male). Source: OGC at 42 points; ZAM at 24 class AA points."
+    },
+    "Muse": {
+      "base_class": "Bard",
+      "armor_type": "Plate",
+      "title_category": "aa_title",
+      "notes": "Bard AA title (female). Source: OGC at 42 points; ZAM at 24 class AA points."
+    },
+    "Veteran": {
+      "_ambiguous": true,
+      "candidates": [
+        "Bard",
+        "Ranger",
+        "Rogue",
+        "Warrior"
+      ],
+      "armor_types": [
+        "Plate",
+        "Chain",
+        "Chain",
+        "Plate"
+      ],
+      "title_category": "aa_title",
+      "notes": "Shared AA title used by Bard, Ranger, Rogue, Warrior at the 18-point tier. Cannot resolve class from this title alone. Source: OGC/ZAM."
+    },
+    "Beastlord": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50. Beastlord is available on Quarm (added in Luclin)."
+    },
+    "Primalist": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Beastlord level 51"
+    },
+    "Animist": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Beastlord level 55"
+    },
+    "Savage Lord": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Beastlord level 60 \u2014 most common Quarm end-game title"
+    },
+    "Feral Lord": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Beastlord level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Wildblood": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Beastlord level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Frostblood": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Beastlord level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Feralkin": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Beastlord Epic 1.0"
+    },
+    "Wildcaller": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Beastlord Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Savage Spirit": {
+      "base_class": "Beastlord",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Beastlord Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Elder": {
+      "_ambiguous": true,
+      "candidates": [
+        "Beastlord",
+        "Druid",
+        "Shaman"
+      ],
+      "armor_types": [
+        "Leather",
+        "Leather",
+        "Chain"
+      ],
+      "title_category": "aa_title",
+      "notes": "Shared AA title used by Beastlord, Druid, Shaman at the 42-point tier. Cannot resolve class from this title alone."
+    },
+    "Venerable": {
+      "_ambiguous": true,
+      "candidates": [
+        "Beastlord",
+        "Cleric",
+        "Druid",
+        "Shaman"
+      ],
+      "armor_types": [
+        "Leather",
+        "Plate",
+        "Leather",
+        "Chain"
+      ],
+      "title_category": "aa_title",
+      "notes": "Shared AA title used by Beastlord, Cleric, Druid, Shaman at the 18-point tier."
+    },
+    "Cleric": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Vicar": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Cleric level 51"
+    },
+    "Templar": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Cleric level 55"
+    },
+    "High Priest": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Cleric level 60 AND Cleric Epic 2.0. Both map to Cleric so no ambiguity."
+    },
+    "Archon": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Cleric level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Prelate": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Cleric level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Exemplar": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Cleric level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Curate": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Cleric Epic 1.0 (Water Sprinkler of Nem Ankh)"
+    },
+    "Exarch": {
+      "base_class": "Cleric",
+      "armor_type": "Plate",
+      "title_category": "aa_title",
+      "notes": "Cleric AA title at the 42-point tier. Source: OGC/ZAM."
+    },
+    "Druid": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Wanderer": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Druid level 51"
+    },
+    "Preserver": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Druid level 55"
+    },
+    "Hierophant": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Druid level 60 \u2014 most common Quarm end-game title"
+    },
+    "Storm Warden": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Druid level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Natureguard": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Druid level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Storm Caller": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Druid level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Naturewalker": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Druid Epic 1.0 (Staff of Living Wood)"
+    },
+    "Forest Scion": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Druid Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Earthkeeper": {
+      "base_class": "Druid",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Druid Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Enchanter": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Illusionist": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Enchanter level 51"
+    },
+    "Beguiler": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Enchanter level 55"
+    },
+    "Phantasmist": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Enchanter level 60 \u2014 most common Quarm end-game title"
+    },
+    "Coercer": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Enchanter level 65 AND Enchanter Epic 1.5. Both map to Enchanter so no ambiguity. Post-cap, will not appear on Quarm."
+    },
+    "Bedazzler": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Enchanter level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Entrancer": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Enchanter level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Mindbender": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Enchanter Epic 1.0 (Scepter of Shadows)"
+    },
+    "Enigma": {
+      "base_class": "Enchanter",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Enchanter Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Sage": {
+      "_ambiguous": true,
+      "candidates": [
+        "Enchanter",
+        "Magician",
+        "Wizard"
+      ],
+      "armor_types": [
+        "Cloth",
+        "Cloth",
+        "Cloth"
+      ],
+      "title_category": "aa_title",
+      "notes": "Shared AA title used by Enchanter, Magician, Wizard at the 42-point tier. All three are Cloth, so armor_type is unambiguous even though base_class is not."
+    },
+    "Magician": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Elementalist": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Magician level 51"
+    },
+    "Conjurer": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Magician level 55"
+    },
+    "Arch Mage": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Magician level 60 \u2014 most common Quarm end-game title"
+    },
+    "Arch Convoker": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Magician level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Arch Magus": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Magician level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Grand Summoner": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Magician level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Thaumaterge": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Magician Epic 1.0 (Staff of Four). Note: some sources spell this 'Thaumaturgist'; the OGC/ZAM consistent spelling is 'Thaumaterge'."
+    },
+    "Master Elementalist": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Magician Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Primal Elementalist": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Magician Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Monk": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Disciple": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Monk level 51"
+    },
+    "Master": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Monk level 55. Note: 'Master' is also the male form of the Enchanter/Magician/Wizard AA title at the 18-point tier. See '_ambiguous' entries."
+    },
+    "Grandmaster": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Monk level 60 \u2014 most common Quarm end-game title"
+    },
+    "Transcendent": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Monk level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Stone Fist": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Monk level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Ashenhand": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "level_title",
+      "notes": "Monk level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Apostle": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Monk Epic 1.0 (Celestial Fists)"
+    },
+    "Enlightened": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Monk Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Ascendant": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "epic_title",
+      "notes": "Monk Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Sensei": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "aa_title",
+      "notes": "Monk AA title at the 42-point tier. Source: OGC/ZAM."
+    },
+    "Brother": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "aa_title",
+      "notes": "Monk AA title (male) at the 18-point tier."
+    },
+    "Sister": {
+      "base_class": "Monk",
+      "armor_type": "Leather",
+      "title_category": "aa_title",
+      "notes": "Monk AA title (female) at the 18-point tier."
+    },
+    "Necromancer": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Heretic": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Necromancer level 51"
+    },
+    "Defiler": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Necromancer level 55"
+    },
+    "Warlock": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Necromancer level 60 \u2014 most common Quarm end-game title"
+    },
+    "Arch Lich": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Necromancer level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Wraith": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Necromancer level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Deathcaller": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Necromancer level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Dark Apprentice": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Necromancer Epic 1.0 (Scythe of the Shadowed Soul)"
+    },
+    "Deathspeaker": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Necromancer Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Grand Occultist": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Necromancer Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Lich": {
+      "base_class": "Necromancer",
+      "armor_type": "Cloth",
+      "title_category": "aa_title",
+      "notes": "Necromancer AA title at the 42-point tier. Source: OGC/ZAM."
+    },
+    "Paladin": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Cavalier": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Paladin level 51"
+    },
+    "Knight": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Paladin level 55"
+    },
+    "Crusader": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Paladin level 60 \u2014 most common Quarm end-game title"
+    },
+    "Lord Protector": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Paladin level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Saint": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Paladin level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Holy Defender": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Paladin level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Lightbringer": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Paladin Epic 1.0 (Fiery Defender)"
+    },
+    "Redeemer": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Paladin Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Valiant": {
+      "base_class": "Paladin",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Paladin Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Duke": {
+      "_ambiguous": true,
+      "candidates": [
+        "Paladin",
+        "Shadow Knight"
+      ],
+      "armor_types": [
+        "Plate",
+        "Plate"
+      ],
+      "title_category": "aa_title",
+      "notes": "Shared AA title (male) used by Paladin and Shadow Knight at the 42-point tier. Both are Plate, so armor_type is unambiguous."
+    },
+    "Duchess": {
+      "_ambiguous": true,
+      "candidates": [
+        "Paladin",
+        "Shadow Knight"
+      ],
+      "armor_types": [
+        "Plate",
+        "Plate"
+      ],
+      "title_category": "aa_title",
+      "notes": "Shared AA title (female) used by Paladin and Shadow Knight at the 42-point tier. OGC spells this 'Dutchess' which is likely a typo; 'Duchess' is standard English. Both are Plate."
+    },
+    "Dutchess": {
+      "_ambiguous": true,
+      "candidates": [
+        "Paladin",
+        "Shadow Knight"
+      ],
+      "armor_types": [
+        "Plate",
+        "Plate"
+      ],
+      "title_category": "aa_title",
+      "notes": "Alternate spelling of Duchess as it appears in OGC source. Included for defensive matching."
+    },
+    "Sir": {
+      "_ambiguous": true,
+      "candidates": [
+        "Paladin",
+        "Shadow Knight"
+      ],
+      "armor_types": [
+        "Plate",
+        "Plate"
+      ],
+      "title_category": "aa_title",
+      "notes": "Shared AA title (male) used by Paladin and Shadow Knight at the 18-point tier."
+    },
+    "Lady": {
+      "_ambiguous": true,
+      "candidates": [
+        "Paladin",
+        "Shadow Knight"
+      ],
+      "armor_types": [
+        "Plate",
+        "Plate"
+      ],
+      "title_category": "aa_title",
+      "notes": "Shared AA title (female) used by Paladin and Shadow Knight at the 18-point tier."
+    },
+    "Ranger": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Pathfinder": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Ranger level 51"
+    },
+    "Outrider": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Ranger level 55"
+    },
+    "Warder": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Ranger level 60 \u2014 most common Quarm end-game title"
+    },
+    "Forest Stalker": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Ranger level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Plainswalker": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Ranger level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Huntmaster": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Ranger level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Windcaller": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Ranger Epic 1.0 (Swiftwind / Earthcaller)"
+    },
+    "Earthguard": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Ranger Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Farwarden": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Ranger Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Hunter": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "aa_title",
+      "notes": "Ranger AA title (male) at the 42-point tier."
+    },
+    "Huntress": {
+      "base_class": "Ranger",
+      "armor_type": "Chain",
+      "title_category": "aa_title",
+      "notes": "Ranger AA title (female) at the 42-point tier."
+    },
+    "Rogue": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Rake": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Rogue level 51"
+    },
+    "Blackguard": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Rogue level 55"
+    },
+    "Assassin": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Rogue level 60 \u2014 most common Quarm end-game title"
+    },
+    "Deceiver": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Rogue level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Nemesis": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Rogue level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Shadowblade": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Rogue level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Swashbuckler": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Rogue Epic 1.0 (Ragebringer)"
+    },
+    "Infiltrator": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Rogue Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Nightblade": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Rogue Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Marauder": {
+      "base_class": "Rogue",
+      "armor_type": "Chain",
+      "title_category": "aa_title",
+      "notes": "Rogue AA title at the 42-point tier."
+    },
+    "Shadow Knight": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50. TODO: confirm exact spacing in ep_log via: SELECT DISTINCT class FROM ep_log ORDER BY class;"
+    },
+    "ShadowKnight": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "base_class",
+      "notes": "Alternate no-space spelling included for defensive matching. TODO: confirm which appears in the sheet."
+    },
+    "Reaver": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Shadow Knight level 51"
+    },
+    "Revenant": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Shadow Knight level 55"
+    },
+    "Grave Lord": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Shadow Knight level 60 \u2014 most common Quarm end-game title"
+    },
+    "Dread Lord": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Shadow Knight level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Scourge Knight": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Shadow Knight level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Bloodreaver": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Shadow Knight level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Pain Lord": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Shadow Knight Epic 1.0 (Innoruuk's Curse)"
+    },
+    "Archfiend": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Shadow Knight Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Darkreaper": {
+      "base_class": "Shadow Knight",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Shadow Knight Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Shaman": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Mystic": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Shaman level 51"
+    },
+    "Luminary": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Shaman level 55"
+    },
+    "Oracle": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Shaman level 60 \u2014 most common Quarm end-game title"
+    },
+    "Prophet": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Shaman level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Soothsayer": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Shaman level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Spiritwatcher": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "level_title",
+      "notes": "Shaman level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Heyokah": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Shaman Epic 1.0 (Spear of Fate)"
+    },
+    "Fateseer": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Shaman Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Spiritwalker": {
+      "base_class": "Shaman",
+      "armor_type": "Chain",
+      "title_category": "epic_title",
+      "notes": "Shaman Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Warrior": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Champion": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Warrior level 51 AND Warrior Epic 1.0 (Jagged Blade of War). Both map to Warrior so no ambiguity."
+    },
+    "Myrmidon": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Warrior level 55"
+    },
+    "Warlord": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Warrior level 60 \u2014 most common Quarm end-game title"
+    },
+    "Overlord": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Warrior level 65 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Vanquisher": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Warrior level 70 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Imperator": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "level_title",
+      "notes": "Warrior level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Conquerer": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Warrior Epic 1.5 \u2014 post-PoP, will not appear on Quarm. OGC spells this 'Conquerer'; standard English is 'Conqueror'."
+    },
+    "Conqueror": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Standard English spelling of Warrior Epic 1.5 title. Included for defensive matching. Post-PoP, will not appear on Quarm."
+    },
+    "Decimator": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "epic_title",
+      "notes": "Warrior Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Marshall": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "aa_title",
+      "notes": "Warrior AA title at the 42-point tier. OGC spells it 'Marshall'; standard spelling is 'Marshal'. Both included."
+    },
+    "Marshal": {
+      "base_class": "Warrior",
+      "armor_type": "Plate",
+      "title_category": "aa_title",
+      "notes": "Standard spelling of Warrior AA title. Included for defensive matching."
+    },
+    "Wizard": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "base_class",
+      "notes": "Base class name, levels 1-50"
+    },
+    "Channeler": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Wizard level 51"
+    },
+    "Evoker": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Wizard level 55"
+    },
+    "Sorcerer": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Wizard level 60 \u2014 most common Quarm end-game title"
+    },
+    "Archanist": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Wizard level 65. Both OGC and ZAM spell this 'Archanist' \u2014 likely a transcription error from original data but may be the in-game string. TODO: confirm in sheet via SELECT DISTINCT class FROM ep_log ORDER BY class;"
+    },
+    "Arcanist": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Standard English spelling of Wizard level-65 title. Included for defensive matching. TODO: confirm which spelling appears in the sheet."
+    },
+    "Grand Archanist": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Wizard level 70 \u2014 post-cap, will not appear on Quarm. OGC spelling."
+    },
+    "Grand Arcanist": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Standard English spelling variant of Wizard level-70 title. Included for defensive matching."
+    },
+    "Pyromancer": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Wizard level 75 \u2014 post-cap, will not appear on Quarm"
+    },
+    "Catalyst": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Wizard Epic 1.0 (Staff of the Four)"
+    },
+    "Scholar": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Wizard Epic 1.5 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Planeshifter": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "epic_title",
+      "notes": "Wizard Epic 2.0 \u2014 post-PoP, will not appear on Quarm"
+    },
+    "Baron": {
+      "_ambiguous": true,
+      "candidates": [
+        "Bard",
+        "Beastlord",
+        "Cleric",
+        "Druid",
+        "Enchanter",
+        "Magician",
+        "Monk",
+        "Necromancer",
+        "Paladin",
+        "Ranger",
+        "Rogue",
+        "Shadow Knight",
+        "Shaman",
+        "Warrior",
+        "Wizard"
+      ],
+      "title_category": "aa_title",
+      "notes": "AA title (male) shared by ALL classes at the 6-point tier. Cannot resolve class from this title. All classes included."
+    },
+    "Baroness": {
+      "_ambiguous": true,
+      "candidates": [
+        "Bard",
+        "Beastlord",
+        "Cleric",
+        "Druid",
+        "Enchanter",
+        "Magician",
+        "Monk",
+        "Necromancer",
+        "Paladin",
+        "Ranger",
+        "Rogue",
+        "Shadow Knight",
+        "Shaman",
+        "Warrior",
+        "Wizard"
+      ],
+      "title_category": "aa_title",
+      "notes": "AA title (female) shared by ALL classes at the 6-point tier. Cannot resolve class from this title."
+    },
+    "Mistress": {
+      "_ambiguous": true,
+      "candidates": [
+        "Enchanter",
+        "Magician",
+        "Wizard"
+      ],
+      "armor_types": [
+        "Cloth",
+        "Cloth",
+        "Cloth"
+      ],
+      "title_category": "aa_title",
+      "notes": "AA title (female) shared by Enchanter, Magician, Wizard at the 18-point tier. All three are Cloth."
+    },
+    "Mage": {
+      "base_class": "Magician",
+      "armor_type": "Cloth",
+      "title_category": "base_class",
+      "notes": "Data entry error observed in EP log (Galeida, 2024-10-26, single occurrence). Mapped to Magician as defensive catch. Confirmed via SQL May 2026."
+    },
+    "Sorceror": {
+      "base_class": "Wizard",
+      "armor_type": "Cloth",
+      "title_category": "level_title",
+      "notes": "Typo variant of 'Sorcerer' (Wizard level 60) found in EP log. Confirmed via SELECT DISTINCT class FROM ep_log. Included for defensive matching."
+    }
+  }
+}
