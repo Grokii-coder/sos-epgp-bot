@@ -1,5 +1,49 @@
 # SoS EPGP Discord Bot — Design Document
-*Last updated: 2026-05-15*
+*Last updated: 2026-05-21*
+
+---
+
+## Project Status Snapshot
+
+### ✅ Completed
+| Item | Notes |
+|------|-------|
+| Phase 0 — Docker setup | MySQL + Python containers, volumes, .env, .gitignore |
+| Phase 1 — Data validation | Sync logic, incremental sync, attendance query logic confirmed |
+| Phase 2 — Standalone bot | All three commands live and tested |
+| `/review` command | Button flow, persistence, skip, re-run behavior all confirmed ✅ |
+| `/item` command | Partial search, no-match, too-many-match, single result all confirmed ✅ |
+| `/priority` command | Class/armor ranking confirmed live ✅ |
+| SC-1: 12-player threshold | Confirmed filtering noise correctly ✅ |
+| SC-2: Same-day PQ + Raid split | Confirmed working ✅ |
+| SC-3: TTL cache | 5-min cache via sync_state table confirmed ✅ |
+| SC-4: Yes/No button flow | Persistence, skip, re-run all confirmed ✅ |
+| pp_value column | Investigated — confirmed empty across all 37,496 rows, dropped from schema ✅ |
+| Alt attendance confirmed | Logged under main name with alt's class title — no separate alt name ✅ |
+| Main switch behavior confirmed | Old name retroactively replaced guild-wide — old name disappears entirely ✅ |
+| eq_class_aliases.json | Source of truth for EQ title → base class → armor type mapping ✅ |
+
+### 🔧 Known Issues / Wording Fix Needed
+| Item | Notes |
+|------|-------|
+| `/review` wording — "logging error" | Soften: "Start and End are missing" instead of "this is likely a logging error" |
+
+### 🔜 Next — Before PR
+| Item | Notes |
+|------|-------|
+| SC-5: Discord Scheduled Events | Tables and cog exist (`cogs/events.py`) — not yet tested |
+| SC-6: `/item` too-many-matches UX | Show 3 most-recent matching items as buttons, paginate in groups of 3 |
+| Fix `/review` wording | See known issues above |
+| Update project directory tree in this doc | Real structure has diverged significantly from Phase 0 plan |
+| Fork + PR into khandyman/SOS-Bot | Phase 3 — table until bot is fully tested and doc is final |
+
+### 🚫 Tabled (Phase 3+)
+| Item | Notes |
+|------|-------|
+| Fork and PR into khandyman/SOS-Bot | After all testing complete and design doc final |
+| Voice channel priority filter | Requires existing bot's Discord voice membership access |
+| Webhook-triggered sync | Requires coordination with sheet-writing bot |
+| Multi-player support | Standalone version is single-player by design |
 
 ---
 
@@ -126,7 +170,7 @@ Every loot event. Clean and straightforward.
 | Column | Description |
 |--------|-------------|
 | Date | Date of loot |
-| Character | Who received the item |
+| Character | Who received the item (stored as `toon_name` in DB — `character` is a reserved word in MySQL) |
 | Loot | Item name |
 | Gear Level | Bid type (High Bid, Medium Bid, Low Bid, Epic Drop, Alt Loot, Rot, etc.) |
 | Notes | GP value |
@@ -135,6 +179,57 @@ Every loot event. Clean and straightforward.
 #### Cycles (tab not yet fetched)
 Cycle number, start date, end date. Small table, grows ~2 rows per month.
 Must be synced to determine current cycle boundaries.
+
+---
+
+## Player Identity
+
+### Standalone Version
+```
+# .env
+PLAYER_NAME=Grokenspiel
+DISCORD_USER_ID=your_discord_id_here
+```
+
+### PR / Existing Bot Version
+- Existing bot already maps Discord user ID → character name
+- Replace hard-coded name with lookup: `get_character_for_discord_user(interaction.user.id)`
+- The existing main/alt relationship is already managed by the existing bot
+
+### Alt Attendance — Confirmed ✅
+*Investigated 2026-05-21 using live EP log data.*
+
+Alt attendance is logged under the **player's main name** with the **alt's class title**.
+There is no separate alt character name in the EP log. When a player attends on an
+approved alt, the EP Log entry shows:
+- `name` = main character's name (e.g. "Narya")
+- `class` = alt's class title (e.g. "Troubadour" when Narya's main is a Wizard/Sorcerer)
+
+**Evidence:** Narya shows 406 entries as Wizard-family titles (Sorcerer, Evoker, Channeler)
+and 291 entries as Bard-family titles (Virtuoso, Troubadour, Bard) — two distinct armor
+types under one name. Aransur shows similar pattern with Paladin as main and scattered
+Enchanter/Cleric/Magician entries as alts.
+
+**Impact on bot logic:** None. `/review` and `/priority` query by player name only.
+The alt's class title may appear in the EP log but does not affect EP credit grouping,
+discrepancy detection, or PR calculation. This is handled correctly as-built.
+
+### Main Switches — Confirmed ✅
+*Investigated 2026-05-21 using live EP log data.*
+
+When a player switches mains, the guild officer **retroactively renames all historical
+EP log entries** in the sheet to the new main's name. The old character name is removed
+entirely — it does not appear anywhere in the database.
+
+**Evidence:**
+- Kess (Cleric) shows 483 entries as Shaman-family titles — she was previously a Shaman
+  named Kelo. No rows exist under the name "Kelo".
+- Winian (Warrior) shows ~20 entries as Necromancer-family titles. No separate
+  necromancer character name exists.
+
+The `class` column reflects whatever class the player was on *at the time of the entry*,
+so old entries will show the previous class. This is cosmetic and does not affect any
+bot logic — all queries group by name only.
 
 ---
 
@@ -159,9 +254,11 @@ Our code must match its architecture exactly for clean PR integration.
 - `cogs/` — slash command modules (`lookups.py`, `updates.py`)
 - `.env` — environment variables (Discord token, guild name, DB credentials)
 
-**Our additions will follow the same structure:**
-- New cog: `cogs/epgp.py` — slash commands (`/review`, `/item`, `/priority`)
-- New class: `classes/epgp_sync.py` — Google Sheets fetch and sync logic
+**Our additions follow the same structure:**
+- New cogs: `cogs/priority.py`, `cogs/review.py`, `cogs/item.py`, `cogs/events.py`
+- New classes: `classes/ep_sync.py`, `classes/gp_sync.py`, `classes/cycle_sync.py`,
+  `classes/sync_manager.py`, `classes/attendance.py`, `classes/sheets.py`, `classes/helpers.py`
+- New data: `data/eq_class_aliases.json` — source of truth for class title mapping
 - New MySQL tables — see Database Schema below
 
 ### Confirmed Architecture Decisions
@@ -177,6 +274,7 @@ Our code must match its architecture exactly for clean PR integration.
 | Discord library | py-cord | Matches existing bot |
 | Dev environment | Docker + Docker Compose | No local MySQL install, reproducible environment |
 | Deployment | Local machine (standalone) | Existing bot handles guild deployment |
+| Class mapping | eq_class_aliases.json | Source of truth — EQ title → base class → armor type |
 
 ---
 
@@ -184,6 +282,8 @@ Our code must match its architecture exactly for clean PR integration.
 
 ### ep_log
 Mirrors the clean side (columns M-V) of the EP Log tab.
+*Note: `pp_value` column was present in early builds — confirmed empty across all
+37,496 rows on 2026-05-21 and removed from schema.*
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -191,7 +291,7 @@ Mirrors the clean side (columns M-V) of the EP Log tab.
 | cycle | INT | Cycle number |
 | date | DATE | Transaction date |
 | name | VARCHAR | Character name |
-| class | VARCHAR | Character class |
+| class | VARCHAR | Character class (EQ progression title) |
 | level | VARCHAR | Character level (VARCHAR due to "ANONYMOUS") |
 | point_type | VARCHAR | Type of EP earned |
 | ep_points | INT | Point value |
@@ -202,12 +302,14 @@ Mirrors the clean side (columns M-V) of the EP Log tab.
 
 ### gp_log
 Mirrors the GP Log tab.
+*Note: The sheet column is named "Character" but stored as `toon_name` in the DB
+because `character` is a reserved word in MySQL.*
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | INT PK AUTO | Internal row ID |
 | date | DATE | Date of loot |
-| character | VARCHAR | Who received the item |
+| toon_name | VARCHAR | Who received the item |
 | loot | VARCHAR | Item name |
 | gear_level | VARCHAR | Bid type |
 | gp_value | INT | GP cost |
@@ -236,6 +338,67 @@ Stores player responses to discrepancy questions from `/review`.
 | response_date | DATE | When the player responded |
 | resolved | BOOLEAN | Whether an officer has addressed a 'yes' response |
 
+### sync_state
+Stores TTL cache state for the Google Sheets sync (SC-3).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INT PK AUTO | Internal row ID |
+| last_sync | DATETIME | Timestamp of last completed sync |
+| sync_type | VARCHAR | Which sync ran (ep_log, gp_log, cycles, full) |
+
+### scheduled_events
+Stores Discord scheduled event data for SC-5.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR PK | Discord event ID |
+| name | VARCHAR | Event name |
+| scheduled_start | DATETIME | Scheduled start time |
+| creator_id | VARCHAR | Discord user ID of event creator |
+| status | VARCHAR | scheduled / active / completed / canceled |
+
+### event_history
+Tracks Discord event name changes for pivot detection (SC-5).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INT PK AUTO | Internal row ID |
+| event_id | VARCHAR | Discord event ID (FK to scheduled_events) |
+| previous_name | VARCHAR | Name before change |
+| changed_at | DATETIME | When the name change was detected |
+
+---
+
+## Class Title Mapping
+
+**Source of truth: `data/eq_class_aliases.json`**
+
+The sheet stores EQ progression titles (e.g. "Virtuoso"), not base class names.
+The alias file maps every known title to a base class and armor type.
+
+| Armor Type | Base Class | Sample Titles |
+|------------|------------|---------------|
+| Plate | Bard | Bard, Troubadour, Virtuoso, Maestro, Minstrel, Lyricist... |
+| Plate | Cleric | Cleric, High Priest, Templar, Archon, Exarch... |
+| Plate | Paladin | Paladin, Crusader, Cavalier, Knight, Lightbringer... |
+| Plate | Shadow Knight | Shadow Knight, Grave Lord, Dread Lord, Bloodreaver... |
+| Plate | Warrior | Warrior, Warlord, Champion, Myrmidon, Overlord... |
+| Chain | Ranger | Ranger, Warder, Pathfinder, Outrider, Farwarden... |
+| Chain | Rogue | Rogue, Assassin, Blackguard, Swashbuckler... |
+| Chain | Shaman | Shaman, Oracle, Luminary, Mystic, Spiritwalker... |
+| Leather | Beastlord | Beastlord, Animist, Feral Lord, Wildblood... |
+| Leather | Druid | Druid, Hierophant, Preserver, Wanderer... |
+| Leather | Monk | Monk, Grandmaster, Disciple, Ascendant... |
+| Cloth | Enchanter | Enchanter, Illusionist, Beguiler, Phantasmist... |
+| Cloth | Magician | Magician, Arch Mage, Conjurer, Elementalist... |
+| Cloth | Necromancer | Necromancer, Defiler, Lich, Arch Lich... |
+| Cloth | Wizard | Wizard, Sorcerer, Evoker, Channeler, Arcanist... |
+
+*Note: An "Unknown" category exists in the alias file for titles that don't map to
+a playable class (Baron, Duchess, Elder, etc.). These are likely guild rank titles
+or NPCs — they are not shown in `/priority` output.*
+
 ---
 
 ## Sync Strategy
@@ -248,9 +411,9 @@ Stores player responses to discrepancy questions from `/review`.
 - Cycles table is small enough to re-fetch entirely each sync
 
 ### Sync Triggers (Standalone)
-- Runs automatically on a schedule (interval TBD)
-- After each sync, checks for new EP Log entries matching the player's name and
-  sends a DM notification if new credits are found (see DM Notifications below)
+- 5-minute TTL cache — sync only runs if more than 5 minutes have passed since last sync
+- Cache state persisted in `sync_state` MySQL table
+- Startup sync runs automatically when the bot connects
 
 ### Sync Triggers (PR / Existing Bot)
 - Automatic scheduled sync
@@ -264,27 +427,6 @@ Stores player responses to discrepancy questions from `/review`.
 
 ---
 
-## Player Identity
-
-### Standalone Version
-```
-# .env
-PLAYER_NAME=Grokenspiel
-DISCORD_USER_ID=your_discord_id_here
-```
-
-### PR / Existing Bot Version
-- Existing bot already maps Discord user ID → character name
-- Replace hard-coded name with lookup: `get_character_for_discord_user(interaction.user.id)`
-- The existing main/alt relationship is already managed by the existing bot
-
-### Alt Attendance — Deferred
-Some players attend raids on approved alts and receive EP credit. Whether that
-credit is logged under the alt's name or the main's name in the EP Log has **not
-been confirmed** with real data. Do not design around this until verified.
-
----
-
 ## Commands
 
 ### `/review [cycle]`
@@ -293,57 +435,22 @@ walks through any events where the player may be missing credit, one at a time.
 
 **Default:** Current cycle. Optional cycle number override (e.g. `/review 58`).
 
-**Flow:**
-```
-/review
-
-Grokenspiel — Cycle 59 (5/10/26 – 5/23/26)
-EP: 586 / 900
-
-I found 2 events where you may be missing credit.
-
-Event 1 of 2:
-📅 05/10/2026  ⚔️ EPGP Raid  📍 Kael Drakkel
-Missing: Mid
-
-Were you there? (yes / no)
-
-> yes
-
-Got it — flagged for officer review.
-
-Event 2 of 2:
-📅 04/28/2026  ⚔️ EPGP Raid  📍 Vex Thal
-Missing: Start, Mid, End
-
-Were you there? (yes / no)
-
-> no
-
-Noted — marking you as absent.
-
-All done! No more discrepancies for Cycle 59.
-```
-
-**If no discrepancies:**
-```
-Grokenspiel — Cycle 59 (5/10/26 – 5/23/26)
-EP: 586 / 900
-
-✅ You're all caught up — no missing credits for Cycle 59.
-```
-
 **Discrepancy detection logic:**
 1. Find all events (raids + PQ) within the cycle date range
 2. For each event date, determine the guild baseline — all unique check-in types
-   any member received on that date
+   any member received on that date (minimum 12 players to qualify as real event)
 3. Compare player's check-ins to the baseline
 4. Skip events already responded to (stored in `attendance_responses`)
 5. Surface only unreviewed discrepancies
 
 **Response persistence:**
-- `yes` → stored with `resolved = false`, awaits officer action, never asked again
+- `yes` → stored with `resolved = false`, flagged for officer action, never asked again
 - `no` → stored with `resolved = true`, closed permanently, never asked again
+- `skip` → deferred, will reappear on next `/review` run
+
+**Known wording issue (pending fix):**
+When only Mid credit is present and Start/End are missing, current output reads
+"this is likely a logging error." This should be softened to "Start and End are missing."
 
 ---
 
@@ -357,41 +464,8 @@ and asks for clarification.
 **All drop types shown:** High Bid, Medium Bid, Low Bid, Alt Loot, Rot, Epic Drop
 (historical only) — full picture including rots.
 
-**Example — consistent history:**
-```
-/item rod of mal
-
-Rod of Malisement — 8 total drops
-
-Recent history:
-  01/30/24  Babee      High Bid    100 GP
-  01/27/24  Wolfx      High Bid    100 GP
-  01/17/24  Koramak    High Bid    100 GP
-```
-
-**Example — mixed history including rot:**
-```
-/item silky whip
-
-Silky Whip of Replication — 5 total drops
-
-Recent history:
-  04/28/26  (rotted)   Rot           0 GP
-  03/15/26  Crowshot   Low Bid      10 GP
-  02/02/26  Ammaru     Medium Bid   50 GP
-```
-
-**Example — multiple matches:**
-```
-/item rod
-
-Multiple items found:
-  1. Rod of Malisement
-  2. Rod of the Oracle
-  3. Rod of Bone
-
-Which item? (reply with number)
-```
+**Too-many-matches behavior (current):** If more than a threshold of items match,
+returns "try a more specific name." See SC-6 for planned improvement.
 
 ---
 
@@ -400,32 +474,7 @@ Which item? (reply with number)
 classes sharing their armor type. No arguments needed — class is looked up
 automatically from the Overview tab.
 
-**Class title → base class → armor type mapping:**
-| Armor Type | EQ Titles in Sheet |
-|------------|-------------------|
-| Plate | Warrior, Warlord, Paladin, Crusader, Shadow Knight, Grave Lord, Cleric, High Priest |
-| Chain | Ranger, Warder, Rogue, Bard, Virtuoso, Shaman, Hierophant, Beastlord |
-| Leather | Monk, Grandmaster, Druid, Oracle |
-| Cloth | Wizard, Arch Mage, Magician, Animist, Enchanter, Phantasmist, Necromancer |
-
-**Example output (Grokenspiel = Virtuoso = Bard = Chain):**
-```
-/priority
-
-Grokenspiel — PR: 9.2559
-
-Among Bards (Virtuosos):        Rank 1 of 3
-  1. Grokenspiel    9.2559  ← you
-  2. Allrin         4.2333
-  3. Ieaini         3.4795
-
-Among Chain wearers:            Rank 3 of 12
-  1. Darkclaw       9.0381
-  2. Katrinka       8.4268
-  3. Grokenspiel    9.2559  ← you
-  4. Krayziefoo     5.9457
-  ...
-```
+**Class resolution:** EQ title → base class → armor type via `data/eq_class_aliases.json`.
 
 **Future enhancement (Phase 3+):**
 When integrated with the existing bot, `/priority` will filter by who is currently
@@ -446,121 +495,30 @@ a sync — no need to run `/review` to find out you were credited.
 
 **Group by event date** — one DM per event, not one per check-in.
 
-**Example DM:**
-```
-📋 New credits recorded — Cycle 59:
-
-05/13/2026  VT - Day 2  EPGP Raid
-  ✅ Raid - Start   50 EP
-  ✅ Raid - Mid     50 EP
-  ✅ Raid - End     50 EP
-  Total: 150 EP  |  Cycle total: 586 / 900
-```
-
-**Future enhancement (Phase 3+):** If the bot that writes to the Google Sheet
-fires a webhook or triggers a sync event on write, DMs could arrive within seconds
-of credit being logged rather than waiting for the next scheduled sync.
-
 ---
 
 ## Development Phases
 
-### Phase 0 — Docker Setup
-Get the containerized development environment running before writing any
-application code. MySQL will live entirely inside Docker — no local install needed.
+### Phase 0 — Docker Setup ✅
+Containerized development environment running. MySQL + Python containers, volumes,
+.env, .gitignore all complete.
 
-**Deliverables:**
-- `Dockerfile` — Python container built from `python:3.11-slim`, installs all
-  pip dependencies from `requirements.txt`
-- `docker-compose.yml` — defines two services:
-  - `db` — MySQL 8 container with a named volume for data persistence
-  - `bot` — Python container, depends on `db`, mounts project directory
-- `.env` — credentials and config (never committed to git):
-  ```
-  PLAYER_NAME=Grokenspiel
-  DISCORD_USER_ID=your_discord_id_here
-  DISCORD_TOKEN=your_token_here
-  DB_HOST=db
-  DB_PORT=3306
-  DB_NAME=sosbot
-  DB_USER=botuser
-  DB_PASSWORD=your_password_here
-  SHEET_ID=1pu43LSErcxSaaAkaaTrvMi8GfZYV-dRf1qaWyKiveAA
-  ```
-- `.env.example` — safe template committed to git with placeholder values
-- `.gitignore` — excludes `.env` and other sensitive files
-- `requirements.txt` — pinned dependencies:
-  ```
-  py-cord
-  sqlalchemy
-  pymysql
-  requests
-  python-dotenv
-  ```
+### Phase 1 — Data Validation ✅
+Sync logic confirmed. Incremental sync, date-based grouping, attendance query logic
+all validated against live data.
 
-**Project directory structure:**
-```
-sos-epgp-bot/
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-├── .env                  # never committed
-├── .env.example          # committed, safe template
-├── .gitignore
-├── main.py               # bot entry point (Phase 2)
-├── sync.py               # standalone sync script (Phase 1)
-├── classes/
-│   ├── database.py       # SQLAlchemy setup, table definitions
-│   └── epgp_sync.py      # Google Sheets fetch and sync logic
-└── cogs/
-    └── epgp.py           # slash commands (Phase 2)
-```
+### Phase 2 — Standalone Personal Bot ✅
+All commands live and tested. See Project Status Snapshot at top of document for
+full testing status.
 
-**Verification:** MySQL is reachable from the Python container, tables can be
-created, and a test row can be inserted and queried before moving to Phase 1.
-
-**Key Docker concepts used:**
-- **Image** — the blueprint for a container (e.g. `mysql:8`, `python:3.11-slim`)
-- **Container** — a running instance of an image
-- **Volume** — persistent storage that survives container restarts (MySQL data)
-- **Compose** — tool that manages multiple containers as one application
-- `docker compose up` — starts everything
-- `docker compose down` — stops everything
-- `docker compose logs bot` — view Python container output
-
-**Note on PR integration:** The `docker-compose.yml` is a development convenience,
-not a deployment requirement. When submitting the PR to the existing bot, only the
-Python source files (`classes/`, `cogs/`, any new dependencies in their
-`requirements.txt`) will be included. Docker setup stays in your personal repo.
-
----
-
-### Phase 1 — Data Validation (runs inside Docker)
-- Write `sync.py`: fetch EP Log, GP Log, Cycles tab via HTTP, store in MySQL
-- Confirm incremental sync works correctly (append-only, date-based grouping)
-- Write and test attendance query logic (baseline comparison, discrepancy detection)
-- Print results to console — no Discord yet
-- Validate output against known data before any bot work
-
----
-
-### Phase 2 — Standalone Personal Bot
-- Write `main.py` bot entry point with py-cord
-- Implement `/review` with conversational flow and MySQL persistence
-- Implement DM notifications triggered after each sync
-- Implement `/item` with partial name search
-- Implement `/priority` with class/armor type lookup table
-- Test thoroughly as a personal tool
-
----
-
-### Phase 3 — PR into Existing Bot
+### Phase 3 — PR into Existing Bot 🚫 Tabled
 - Fork https://github.com/khandyman/SOS-Bot
-- Port Phase 2 code into existing structure (`cogs/epgp.py`, `classes/`)
+- Port Phase 2 code into existing structure
 - Replace hard-coded player name with Discord ID → character lookup
 - Handle main/alt relationships using existing bot's database
-- Investigate and resolve alt attendance edge case with real data
 - Submit PR
+
+*Tabled until bot is fully tested, all known issues resolved, and design doc is final.*
 
 ---
 
@@ -576,83 +534,57 @@ Python source files (`classes/`, `cogs/`, any new dependencies in their
 
 ---
 
-## Scope Creep — Implemented
+## Scope Creep Log
 
-These items were added during development beyond the original design.
-
-### SC-1: 12-Player Minimum Threshold for Events ✅
+### SC-1: 12-Player Minimum Threshold ✅
 Single-player EP Log entries (data errors, test entries) were appearing as guild
 events. Added a minimum of 12 players per check-in to qualify as a real event,
 matching the guild's PQ eligibility requirement.
 
 ### SC-2: Same-Day PQ + Raid Split ✅
-When a PQ event and EPGP raid occur on the same date, they are now shown as two
-separate events rather than one combined event. The event type is determined by
-the check-in type (Event Attend = PQ, Raid - Start/Mid/End = EPGP Raid).
+When a PQ event and EPGP raid occur on the same date, they are shown as two
+separate events rather than one combined event. Event type determined by check-in
+type (Event Attend = PQ, Raid - Start/Mid/End = EPGP Raid).
 
 ### SC-3: TTL Cache for Google Sheets Sync ✅
-Rather than syncing on every command, a 5-minute TTL cache was implemented.
-The sync only runs if more than 5 minutes have passed since the last sync.
-Cache state is stored in the `sync_state` MySQL table.
-Startup sync runs automatically when the bot connects.
+5-minute TTL cache prevents syncing on every command. Cache state stored in
+`sync_state` MySQL table. Startup sync runs automatically on bot connect.
 
 ### SC-4: Yes/No Button Flow in /review ✅
-Instead of a static list, `/review` walks through discrepancies one at a time
-using Discord UI buttons. Player responses (yes/no) are persisted in the
-`attendance_responses` table. "No" responses are marked resolved and never
-shown again. "Yes" responses are flagged for officer follow-up.
+`/review` walks through discrepancies one at a time using Discord UI buttons.
+Responses persisted in `attendance_responses` table. Skip defers to next run.
+"No" responses closed permanently. "Yes" responses flagged for officer follow-up.
 
 ### SC-5: Discord Scheduled Events Integration 🔜
-Pull upcoming guild events from Discord's scheduled events API to use as the
-primary source for event names and raid leaders. Replaces reliance on the EP
-Log note field for event identification.
+Pull upcoming guild events from Discord's scheduled events API for event name
+and raid leader enrichment. Tables (`scheduled_events`, `event_history`) and
+cog (`cogs/events.py`) exist — **not yet tested**.
 
 **Event location display format:**
 ```
 📍 DISCORD_EVENT_NAME (was: PREVIOUS_NAME) [sheet: EPGP_NOTE] 👤 LEADER
 ```
 
-- **DISCORD_EVENT_NAME** — current Discord event name (authoritative)
-- **(was: PREVIOUS_NAME)** — previous Discord event name if changed (pivot detection)
-- **[sheet: EPGP_NOTE]** — EP Log note field value
-- **👤 LEADER** — Discord event creator (planned lead). If someone else received
-  Event Lead EP, shown as `Creator → Actual Lead`
-
-**Examples:**
-```
-# Normal - leader as planned
-📍 VT - Aten One Night Test [sheet: VT - Day 2] 👤 Sandrian
-
-# Normal - different leader ran it
-📍 VT - Aten One Night Test [sheet: VT - Day 2] 👤 Sandrian → Avenn
-
-# Pivot - Discord event was changed before raid
-📍 VT - Day 2 (was: Kael - Dragons) [sheet: VT - Day 2] 👤 Sandrian
-
-# Combined - changed, pivoted, different leader
-📍 VT - Day 2 (was: Kael - Dragons) [sheet: Ssra - Rhag] 👤 Sandrian → Avenn
-```
-
-**Database additions required:**
-- `scheduled_events` table — stores current Discord event data
-- `event_history` table — tracks name changes for pivot detection
-
-**Data sources:**
-- Discord event creator → planned raid leader
-- EP Log `point_type = 'Event Lead'` → actual raid leader
-- If no Event Lead EP exists → show only Discord creator, no arrow
-
-**Shown in:** `/review` event lines (past events only, not upcoming)
+### SC-6: `/item` Too-Many-Matches UX 🔜
+Instead of dead-end "try a more specific name" message, show the 3 most recently
+dropped matching items as buttons. Player can select one or page through in groups
+of 3 (sorted by most recent drop date descending) until they find what they want.
 
 ---
 
-## Open Items & Deferred Decisions
+## Open Items
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Alt attendance in EP Log | Deferred | Need to confirm whether alt credit is logged under alt name or main name. Do not design around this until confirmed with real data. |
-| Sync schedule interval | TBD | Currently triggered by commands via 5-min TTL cache |
-| Additional commands | Pending | `/pr`, `/standings`, `/loot`, `/decay`, `/whowas`, `/keys`, `/unresolved` — not committed to, evaluate after core features are working |
-| Voice channel priority | Phase 3+ | Requires existing bot integration for Discord voice membership |
-| Webhook-triggered sync | Phase 3+ | Requires coordination with the bot that writes to Google Sheets |
-| SC-5 implementation | Next | Discord scheduled events integration — see Scope Creep section |
+| Alt attendance in EP Log | ✅ Resolved | Logged under main name with alt's class title. No separate alt name. See Player Identity section. |
+| Main switch behavior | ✅ Resolved | Old name retroactively replaced guild-wide. Old name disappears entirely from DB. |
+| pp_value column | ✅ Resolved | Confirmed empty across all 37,496 rows — dropped from schema. |
+| gp_log column name | ✅ Resolved | Sheet says "Character" but DB uses `toon_name` — `character` is reserved in MySQL. |
+| Bard armor type in design doc | ✅ Resolved | Bard is Plate, not Chain. Source of truth is eq_class_aliases.json. |
+| `/review` wording "logging error" | 🔧 Fix needed | Soften to "Start and End are missing" |
+| SC-5 testing | 🔜 Next | cogs/events.py and tables exist, not yet tested |
+| SC-6 implementation | 🔜 Next | /item too-many-matches UX improvement |
+| Project directory tree | 🔜 Update | Real structure has diverged from Phase 0 plan |
+| Sync schedule interval | TBD | Currently 5-min TTL cache triggered by commands |
+| Voice channel priority | Phase 3+ | Requires existing bot integration |
+| Webhook-triggered sync | Phase 3+ | Requires coordination with sheet-writing bot |
