@@ -554,10 +554,11 @@ type (Event Attend = PQ, Raid - Start/Mid/End = EPGP Raid).
 Responses persisted in `attendance_responses` table. Skip defers to next run.
 "No" responses closed permanently. "Yes" responses flagged for officer follow-up.
 
-### SC-5: Discord Scheduled Events Integration ✅ Complete
+### SC-5: Discord Scheduled Events Integration ✅ Complete (all gaps closed 2026-05-30)
 Pull upcoming guild events from Discord's scheduled events API for event name
 and raid leader enrichment. Tables (`scheduled_events`, `event_history`) and
 cog (`cogs/events.py`) exist. T1 (Gateway Listeners) tested 2026-05-28.
+Unit tests covering all three remaining gaps added in `tests/test_sc5_gaps.py`.
 
 **Event location display format:**
 ```
@@ -622,8 +623,8 @@ Status lifecycle `scheduled → active → completed` both fire `on_scheduled_ev
 correctly. DB updated with correct status at each transition.
 
 **Known limitations:**
-- Same-date double events: `LIMIT 1` returns earliest `start_time`. Documented, not fixed.
-- Voice-channel location branch (`hasattr(val, 'name')`) untested — no voice events created.
+- Same-date double events: `LIMIT 1` returns earliest `start_time`. Documented and exercised by unit tests (T2-5 gap, 2026-05-30).
+- Voice-channel location branch (`hasattr(val, 'name')`) confirmed correct by unit test (T1 gap, 2026-05-30).
 
 ### SC-6: `/item` Too-Many-Matches UX 🔜
 Instead of dead-end "try a more specific name" message, show the 3 most recently
@@ -642,7 +643,9 @@ of 3 (sorted by most recent drop date descending) until they find what they want
 | gp_log column name | ✅ Resolved | Sheet says "Character" but DB uses `toon_name` — `character` is reserved in MySQL. |
 | Bard armor type in design doc | ✅ Resolved | Bard is Plate, not Chain. Source of truth is eq_class_aliases.json. |
 | `/review` wording "logging error" | 🔧 Fix needed | Soften to "Start and End are missing" |
-| SC-5 T1 — Gateway Listeners | ✅ Tested 2026-05-28 | All listener paths confirmed. `creator_name` fix applied via `fetch_member` |
+| SC-5 T1 — Voice-channel branch | ✅ Unit tested 2026-05-30 | `hasattr(val, 'name')` branch confirmed by mock in `tests/test_sc5_gaps.py` |
+| SC-5 T5 — Regression: sync_state isolation | ✅ Unit tested 2026-05-30 | `save_event` and `record_name_change` confirmed not touching `sync_state` |
+| SC-5 T2-5 — Same-date LIMIT 1 | ✅ Unit tested 2026-05-30 | Known limitation exercised and pinned in `tests/test_sc5_gaps.py` |
 | SC-5 T2 — `get_scheduled_event_for_date` | ✅ Tested 2026-05-29 | Lives in `attendance.py`, date matching confirmed |
 | SC-5 T3 — `format_event_location` | ✅ Tested 2026-05-29 | Lives in `attendance.py`, all display branches confirmed |
 | SC-5 T4 — End-to-end `/review` enrichment | ✅ Tested 2026-05-29 | Full pivot display confirmed in live embed |
