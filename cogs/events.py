@@ -16,8 +16,9 @@ class EventsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def save_event(self, event):
+    async def save_event(self, event):
         """Insert or update a scheduled event in the database."""
+
         # Safely extract location string
         location = None
         if event.location:
@@ -33,13 +34,21 @@ class EventsCog(commands.Cog):
             else:
                 location = str(loc)
 
-        # Safely extract creator name
+        # Resolve creator name via fetch_member (one HTTP call, no members intent needed)
         creator_name = None
-        if event.creator:
-            creator_name = event.creator.name
+        if event.creator_id:
+            try:
+                member = await event.guild.fetch_member(event.creator_id)
+                creator_name = member.name
+            except Exception:
+                pass  # creator_name stays None if member not found
 
         # Convert status enum to string
         status = event.status.name if hasattr(event.status, 'name') else str(event.status)
+
+        # Timestamps
+        start = event.start_time.replace(tzinfo=None) if event.start_time else None
+        end   = event.end_time.replace(tzinfo=None)   if event.end_time   else None
 
         engine = get_engine()
         with engine.begin() as conn:
@@ -63,8 +72,8 @@ class EventsCog(commands.Cog):
                 "guild_id":     event.guild.id,
                 "name":         event.name,
                 "location":     location,
-                "start_time":   event.start_time.replace(tzinfo=None) if event.start_time else None,
-                "end_time":     event.end_time.replace(tzinfo=None) if event.end_time else None,
+                "start_time":   start,
+                "end_time":     end,
                 "creator_id":   event.creator_id,
                 "creator_name": creator_name,
                 "status":       status,
@@ -95,8 +104,8 @@ class EventsCog(commands.Cog):
     @commands.Cog.listener()
     async def on_scheduled_event_create(self, event):
         """Fired when a new scheduled event is created."""
-        print(f"New event detected: {event.name}")
-        self.save_event(event)
+        print(f"New event detected: {event.name} (id={event.id})")
+        await self.save_event(event)
 
     @commands.Cog.listener()
     async def on_scheduled_event_update(self, before, after):
@@ -109,7 +118,7 @@ class EventsCog(commands.Cog):
             print(f"  Name changed: {before.name} → {after.name}")
             self.record_name_change(after.id, before.name, after.name)
 
-        self.save_event(after)
+        await self.save_event(after)
 
     @commands.Cog.listener()
     async def on_scheduled_event_delete(self, event):
@@ -126,7 +135,6 @@ class EventsCog(commands.Cog):
                 "event_id": event.id,
                 "now":      datetime.utcnow(),
             })
-
 
 def setup(bot):
     bot.add_cog(EventsCog(bot))

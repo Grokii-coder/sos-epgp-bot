@@ -43,7 +43,7 @@ async def on_ready():
             events = guild.scheduled_events
             print(f"  Found {len(events)} events in {guild.name}")
             for event in events:
-                events_cog.save_event(event)
+                await events_cog.save_event(event)
     print("Scheduled event sync complete.")
 
 if __name__ == "__main__":

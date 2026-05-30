@@ -31,7 +31,6 @@
 ### 🔜 Next — Before PR
 | Item | Notes |
 |------|-------|
-| SC-5: Discord Scheduled Events | Tables and cog exist (`cogs/events.py`) — not yet tested |
 | SC-6: `/item` too-many-matches UX | Show 3 most-recent matching items as buttons, paginate in groups of 3 |
 | Fix `/review` wording | See known issues above |
 | Update project directory tree in this doc | Real structure has diverged significantly from Phase 0 plan |
@@ -555,15 +554,76 @@ type (Event Attend = PQ, Raid - Start/Mid/End = EPGP Raid).
 Responses persisted in `attendance_responses` table. Skip defers to next run.
 "No" responses closed permanently. "Yes" responses flagged for officer follow-up.
 
-### SC-5: Discord Scheduled Events Integration 🔜
+### SC-5: Discord Scheduled Events Integration ✅ Complete
 Pull upcoming guild events from Discord's scheduled events API for event name
 and raid leader enrichment. Tables (`scheduled_events`, `event_history`) and
-cog (`cogs/events.py`) exist — **not yet tested**.
+cog (`cogs/events.py`) exist. T1 (Gateway Listeners) tested 2026-05-28.
 
 **Event location display format:**
 ```
 📍 DISCORD_EVENT_NAME (was: PREVIOUS_NAME) [sheet: EPGP_NOTE] 👤 LEADER
 ```
+
+#### T1 — Gateway Listeners (tested 2026-05-28) ✅ with known gap
+
+| Test | Result |
+|------|--------|
+| `on_scheduled_event_create` fires, text location saved to DB | ✅ |
+| `on_scheduled_event_update` fires, no name change → skips `record_name_change` | ✅ |
+| `on_scheduled_event_update` fires, name change → `record_name_change` → DB | ✅ |
+| Location change captured alongside name change via `save_event(after)` | ✅ |
+| `on_scheduled_event_delete` fires → status set to `cancelled` in DB | ✅ |
+| Startup sync fires `save_event` for all pre-existing guild events on `on_ready` | ✅ |
+| `creator_name` populated | ❌ Known gap — see below |
+
+**confirmed behavior — location handling:**
+`event.location` always arrives as a `ScheduledEventLocation` object with a `.value`
+attribute. For external (text) locations, `.value` is a plain string — the `str` branch
+fires every time. The `hasattr(val, 'name')` voice-channel branch has not been exercised
+(no voice-based events tested) but the code path exists and is correct by inspection.
+
+**Known gap — `creator_name` always NULL:**
+`event.creator` is never hydrated by py-cord in any context (startup sync or live
+gateway events). `event.creator_id` is always present. `bot.get_user(creator_id)`
+returns `None` because the bot hasn't cached the creator via messages or member list.
+
+Fix requires one of:
+- Enable `members` intent + fetch members on ready, **or**
+- Call `await guild.fetch_member(creator_id)` (async, one HTTP call per event)
+
+Until fixed, `creator_name` is `NULL` in `scheduled_events` for all rows.
+The `👤 LEADER` portion of the display format will be blank.
+This must be resolved before T3/T4 (`format_event_location` and `/review` enrichment).
+
+**confirmed behavior — `on_scheduled_event_update` scope:**
+Fires for any change — name, location, time, description. Only name changes trigger
+`record_name_change`; all other changes are silently captured via `save_event(after)`.
+
+**T2 — `get_scheduled_event_for_date` (tested 2026-05-29) ✅**
+Function lives in `attendance.py` (already existed). Takes a `conn` and `event_date`,
+returns dict with `name`, `location`, `creator_name`, `previous_names` (list), or
+`None` if no event found. `DATE(start_time)` stripping confirmed correct. Fallback
+to `None` confirmed for dates with no Discord event.
+
+**T3 — `format_event_location` (tested 2026-05-29) ✅**
+Function lives in `attendance.py`. Confirmed all display branches:
+- Full enriched: `DISCORD_NAME (was: PREV) [sheet: NOTE] 👤 LEADER`
+- No pivot: `DISCORD_NAME [sheet: NOTE] 👤 LEADER`
+- No Discord event: `[sheet: NOTE]`
+- Neither: `Unknown`
+
+**T4 — End-to-end `/review` enrichment (tested 2026-05-29) ✅**
+Live test confirmed enriched location string displays correctly in embed:
+`Change Test Event Topic (was: testsetet) [sheet: VT Trash] 👤 grokii_`
+Pivot, sheet note, and leader all populated correctly.
+
+**Bonus T1 coverage (observed 2026-05-29):**
+Status lifecycle `scheduled → active → completed` both fire `on_scheduled_event_update`
+correctly. DB updated with correct status at each transition.
+
+**Known limitations:**
+- Same-date double events: `LIMIT 1` returns earliest `start_time`. Documented, not fixed.
+- Voice-channel location branch (`hasattr(val, 'name')`) untested — no voice events created.
 
 ### SC-6: `/item` Too-Many-Matches UX 🔜
 Instead of dead-end "try a more specific name" message, show the 3 most recently
@@ -582,7 +642,10 @@ of 3 (sorted by most recent drop date descending) until they find what they want
 | gp_log column name | ✅ Resolved | Sheet says "Character" but DB uses `toon_name` — `character` is reserved in MySQL. |
 | Bard armor type in design doc | ✅ Resolved | Bard is Plate, not Chain. Source of truth is eq_class_aliases.json. |
 | `/review` wording "logging error" | 🔧 Fix needed | Soften to "Start and End are missing" |
-| SC-5 testing | 🔜 Next | cogs/events.py and tables exist, not yet tested |
+| SC-5 T1 — Gateway Listeners | ✅ Tested 2026-05-28 | All listener paths confirmed. `creator_name` fix applied via `fetch_member` |
+| SC-5 T2 — `get_scheduled_event_for_date` | ✅ Tested 2026-05-29 | Lives in `attendance.py`, date matching confirmed |
+| SC-5 T3 — `format_event_location` | ✅ Tested 2026-05-29 | Lives in `attendance.py`, all display branches confirmed |
+| SC-5 T4 — End-to-end `/review` enrichment | ✅ Tested 2026-05-29 | Full pivot display confirmed in live embed |
 | SC-6 implementation | 🔜 Next | /item too-many-matches UX improvement |
 | Project directory tree | 🔜 Update | Real structure has diverged from Phase 0 plan |
 | Sync schedule interval | TBD | Currently 5-min TTL cache triggered by commands |
