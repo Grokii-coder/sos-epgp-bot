@@ -32,7 +32,6 @@
 | Item | Notes |
 |------|-------|
 | Fix `/review` wording | See known issues above |
-| Update project directory tree in this doc | Real structure has diverged significantly from Phase 0 plan |
 | Fork + PR into khandyman/SOS-Bot | Phase 3 — table until bot is fully tested and doc is final |
 
 ### 🚫 Tabled (Phase 3+)
@@ -258,6 +257,43 @@ Our code must match its architecture exactly for clean PR integration.
   `classes/sync_manager.py`, `classes/attendance.py`, `classes/sheets.py`, `classes/helpers.py`
 - New data: `data/eq_class_aliases.json` — source of truth for class title mapping
 - New MySQL tables — see Database Schema below
+
+### Project Directory Structure
+
+```
+sos-epgp-bot/
+├── Design.md                        # Source of truth — architecture, decisions, open items
+├── Dockerfile                       # Python container definition
+├── README.md                        # Repo overview
+├── docker-compose.yml               # MySQL + Python containers
+├── init.sql                         # DB schema — run once on first container start
+├── main.py                          # Bot entry point — loads cogs, handles on_ready sync
+├── requirements.txt                 # Python dependencies
+├── sync.py                          # Standalone sync script (Phase 1 validation tool)
+├── test_attendance.py               # Legacy Phase 1 integration script (not pytest)
+├── .env.example                     # Template for .env — copy and fill in secrets
+├── cogs/
+│   ├── events.py                    # SC-5: Discord scheduled event gateway listeners
+│   ├── item.py                      # SC-6: /item command — loot history search
+│   ├── priority.py                  # /priority command — PR rank by class/armor type
+│   └── review.py                    # /review command — EP discrepancy review flow
+├── classes/
+│   ├── attendance.py                # Query helpers: event lookup, location formatting
+│   ├── cycle_sync.py                # Syncs cycles tab from Google Sheets
+│   ├── database.py                  # SQLAlchemy engine factory (get_engine())
+│   ├── ep_sync.py                   # Incremental sync of EP log from Google Sheets
+│   ├── gp_sync.py                   # Incremental sync of GP log from Google Sheets
+│   ├── helpers.py                   # Shared utilities (date parsing, formatting, etc.)
+│   ├── sheets.py                    # Google Sheets HTTP fetch helpers
+│   └── sync_manager.py              # SC-3: TTL cache logic, orchestrates all syncs
+├── data/
+│   └── eq_class_aliases.json        # EQ title → base class → armor type mapping
+└── tests/
+    ├── __init__.py
+    ├── conftest.py                  # Env var patches so cogs import cleanly without .env
+    ├── test_sc5_gaps.py             # SC-5 unit tests: TTL isolation, voice branch, LIMIT 1
+    └── test_sc6_item_ux.py          # SC-6 unit tests: pagination, ephemeral, routing
+```
 
 ### Confirmed Architecture Decisions
 
@@ -534,6 +570,11 @@ full testing status.
 
 ## Scope Creep Log
 
+**Naming convention:** Any future scope change — feature, fix, or investigation — gets
+the next available SC-N number. Add an entry here when the work is scoped, update the
+Project Status Snapshot when it ships. The number is permanent; do not renumber or
+reuse. Current highest: **SC-6**.
+
 ### SC-1: 12-Player Minimum Threshold ✅
 Single-player EP Log entries (data errors, test entries) were appearing as guild
 events. Added a minimum of 12 players per check-in to qualify as a real event,
@@ -647,7 +688,7 @@ Unit tests in `tests/test_sc6_item_ux.py` (29 tests).
 | SC-5 T3 — `format_event_location` | ✅ Tested 2026-05-29 | Lives in `attendance.py`, all display branches confirmed |
 | SC-5 T4 — End-to-end `/review` enrichment | ✅ Tested 2026-05-29 | Full pivot display confirmed in live embed |
 | SC-6 implementation | ✅ Complete 2026-05-30 | Paginated view + ephemeral — see `cogs/item.py`, `tests/test_sc6_item_ux.py` |
-| Project directory tree | 🔜 Update | Real structure has diverged from Phase 0 plan |
+| Project directory tree | ✅ Updated 2026-05-30 | See Directory Structure section in Architecture |
 | Sync schedule interval | TBD | Currently 5-min TTL cache triggered by commands |
 | Voice channel priority | Phase 3+ | Requires existing bot integration |
 | Webhook-triggered sync | Phase 3+ | Requires coordination with sheet-writing bot |
