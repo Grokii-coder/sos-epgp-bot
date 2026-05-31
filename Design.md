@@ -31,7 +31,6 @@
 ### 🔜 Next — Before PR
 | Item | Notes |
 |------|-------|
-| SC-6: `/item` too-many-matches UX | Show 3 most-recent matching items as buttons, paginate in groups of 3 |
 | Fix `/review` wording | See known issues above |
 | Update project directory tree in this doc | Real structure has diverged significantly from Phase 0 plan |
 | Fork + PR into khandyman/SOS-Bot | Phase 3 — table until bot is fully tested and doc is final |
@@ -554,11 +553,10 @@ type (Event Attend = PQ, Raid - Start/Mid/End = EPGP Raid).
 Responses persisted in `attendance_responses` table. Skip defers to next run.
 "No" responses closed permanently. "Yes" responses flagged for officer follow-up.
 
-### SC-5: Discord Scheduled Events Integration ✅ Complete (all gaps closed 2026-05-30)
+### SC-5: Discord Scheduled Events Integration ✅ Complete
 Pull upcoming guild events from Discord's scheduled events API for event name
 and raid leader enrichment. Tables (`scheduled_events`, `event_history`) and
 cog (`cogs/events.py`) exist. T1 (Gateway Listeners) tested 2026-05-28.
-Unit tests covering all three remaining gaps added in `tests/test_sc5_gaps.py`.
 
 **Event location display format:**
 ```
@@ -623,13 +621,14 @@ Status lifecycle `scheduled → active → completed` both fire `on_scheduled_ev
 correctly. DB updated with correct status at each transition.
 
 **Known limitations:**
-- Same-date double events: `LIMIT 1` returns earliest `start_time`. Documented and exercised by unit tests (T2-5 gap, 2026-05-30).
-- Voice-channel location branch (`hasattr(val, 'name')`) confirmed correct by unit test (T1 gap, 2026-05-30).
+- Same-date double events: `LIMIT 1` returns earliest `start_time`. Documented, not fixed.
+- Voice-channel location branch (`hasattr(val, 'name')`) untested — no voice events created.
 
-### SC-6: `/item` Too-Many-Matches UX 🔜
-Instead of dead-end "try a more specific name" message, show the 3 most recently
-dropped matching items as buttons. Player can select one or page through in groups
-of 3 (sorted by most recent drop date descending) until they find what they want.
+### SC-6: `/item` Too-Many-Matches UX ✅ Complete (2026-05-30)
+Instead of dead-end "try a more specific name" message, 6+ matches show paginated
+buttons (3 per page, sorted by most recent drop date descending) with Prev/Next
+navigation. All `/item` outcomes are ephemeral — visible only to the invoking user.
+Unit tests in `tests/test_sc6_item_ux.py` (29 tests).
 
 ---
 
@@ -643,13 +642,11 @@ of 3 (sorted by most recent drop date descending) until they find what they want
 | gp_log column name | ✅ Resolved | Sheet says "Character" but DB uses `toon_name` — `character` is reserved in MySQL. |
 | Bard armor type in design doc | ✅ Resolved | Bard is Plate, not Chain. Source of truth is eq_class_aliases.json. |
 | `/review` wording "logging error" | 🔧 Fix needed | Soften to "Start and End are missing" |
-| SC-5 T1 — Voice-channel branch | ✅ Unit tested 2026-05-30 | `hasattr(val, 'name')` branch confirmed by mock in `tests/test_sc5_gaps.py` |
-| SC-5 T5 — Regression: sync_state isolation | ✅ Unit tested 2026-05-30 | `save_event` and `record_name_change` confirmed not touching `sync_state` |
-| SC-5 T2-5 — Same-date LIMIT 1 | ✅ Unit tested 2026-05-30 | Known limitation exercised and pinned in `tests/test_sc5_gaps.py` |
+| SC-5 T1 — Gateway Listeners | ✅ Tested 2026-05-28 | All listener paths confirmed. `creator_name` fix applied via `fetch_member` |
 | SC-5 T2 — `get_scheduled_event_for_date` | ✅ Tested 2026-05-29 | Lives in `attendance.py`, date matching confirmed |
 | SC-5 T3 — `format_event_location` | ✅ Tested 2026-05-29 | Lives in `attendance.py`, all display branches confirmed |
 | SC-5 T4 — End-to-end `/review` enrichment | ✅ Tested 2026-05-29 | Full pivot display confirmed in live embed |
-| SC-6 implementation | 🔜 Next | /item too-many-matches UX improvement |
+| SC-6 implementation | ✅ Complete 2026-05-30 | Paginated view + ephemeral — see `cogs/item.py`, `tests/test_sc6_item_ux.py` |
 | Project directory tree | 🔜 Update | Real structure has diverged from Phase 0 plan |
 | Sync schedule interval | TBD | Currently 5-min TTL cache triggered by commands |
 | Voice channel priority | Phase 3+ | Requires existing bot integration |
